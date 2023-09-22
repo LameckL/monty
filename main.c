@@ -1,71 +1,45 @@
 #include "monty.h"
-#include "lists.h"
-
-data_t data = DATA_INIT;
-
+bus_t bus = {NULL, NULL, NULL, 0};
 /**
- * monty - this is a helper func to the main
- * @args: struct ptr of the args from main
- * Description: opens,reads the file with the opcodes
- * and call the func finding the corresponding executing func
- */
-void monty(args_t *args)
-{
-	size_t len = 0;
-	int recei = 0;
-	void (*code_func)(stack_t **, unsigned int);
-
-	if (args->ac != 2)
-	{
-		dprintf(STDERR_FILENO, USAGE);
-		exit(EXIT_FAILURE);
-	}
-	data.fptr = fopen(args->av, "r");
-	if (!data.fptr)
-	{
-		dprintf(STDERR_FILENO, FILE_ERROR, args->av);
-		exit(EXIT_FAILURE);
-	}
-	while (1)
-	{
-		args->line_number++;
-		recei = getline(&(data.line), &len, data.fptr);
-		if (recei < 0)
-			break;
-		data.words = strtow(data.line);
-		if (data.words[0] == NULL || data.words[0][0] == '#')
-		{
-			free_all(0);
-			continue;
-		}
-		code_func = get_func(data.words);
-		if (!code_func)
-		{
-			dprintf(STDERR_FILENO, UNKNOWN, args->line_number, data.words[0]);
-			free_all(1);
-			exit(EXIT_FAILURE);
-		}
-		code_func(&(data.stack), args->line_number);
-		free_all(0);
-	}
-	free_all(1);
-}
-
-/**
- * main - entry point
- * @argc: no. of args
- * @argv: array of the ars
- * Return: EXIT_SUCCESS or EXIT_FAILURE
- */
+* main - func interpreting monty code
+* @argc: no. of args
+* @argv: file location
+* Return: 0 - success
+*/
 int main(int argc, char *argv[])
 {
-	args_t args;
+	char *content;
+	FILE *file;
+	size_t size = 0;
+	ssize_t read_line = 1;
+	stack_t *stack = NULL;
+	unsigned int counter = 0;
 
-	args.av = argv[1];
-	args.ac = argc;
-	args.line_number = 0;
-
-	monty(&args);
-
-	return (EXIT_SUCCESS);
+	if (argc != 2)
+	{
+		fprintf(stderr, "USAGE: monty file\n");
+		exit(EXIT_FAILURE);
+	}
+	file = fopen(argv[1], "r");
+	bus.file = file;
+	if (!file)
+	{
+		fprintf(stderr, "Error: Can't open file %s\n", argv[1]);
+		exit(EXIT_FAILURE);
+	}
+	while (read_line > 0)
+	{
+		content = NULL;
+		read_line = getline(&content, &size, file);
+		bus.content = content;
+		counter++;
+		if (read_line > 0)
+		{
+			execute(content, &stack, counter, file);
+		}
+		free(content);
+	}
+	free_stack(stack);
+	fclose(file);
+return (0);
 }
